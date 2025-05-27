@@ -38,6 +38,13 @@ def analyse_grib_gdal(path):
     assert dt.minute == 0
     assert dt.second == 0
 
+    # read 1st band of 1[hPa] ISBL (Isobaric surface) / near top of atmos
+    data = band1.ReadAsArray()
+    _min, _max = data.min(), data.max()
+
+    msg = f"rh value error 0.0 <= rh <= 100.0 is FALSE, (min {_min}, max {_max})"
+    assert ((0.0 <= data) <= 100.0).all(), msg
+
     ds = None  # close dataset
 
 

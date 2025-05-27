@@ -12,7 +12,7 @@ GRIB_REF_TIME = "GRIB_REF_TIME"
 TZ_UTC = datetime.timezone.utc
 
 def main():
-    grib_path = "20230201_era5.data.grib"
+    grib_path = "data/20230201_era5_rh_global.data.grib"
     analyse_grib_gdal(grib_path)
 
 

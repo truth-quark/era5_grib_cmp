@@ -9,10 +9,8 @@ import xarray as xr
 gdal.UseExceptions()
 
 
-# TODO: add xarray GRIB reader
-
 def read_data_pygrib(path, nband):
-    # TODO: is band zero or one index?
+    # Treat band as zero indexed
     # TODO: add handling for large(r) data, such as global
     ds = pygrib.open(path)
     ds.seek(nband)
@@ -36,7 +34,7 @@ def read_data_xarray(path, nband):
     # TODO: does xarray use GDAL???
     # checked in virtual env, raw xarray from pip does NOT have a GDAL dependency
 
-    ds = xr.open_dataset(path, engine="cfgrib")
+    ds = xr.open_dataset(path, engine="cfgrib", decode_timedelta=False)
 
     assert ds.r is not None
     if ds.r.dims == ('latitude', 'longitude'):

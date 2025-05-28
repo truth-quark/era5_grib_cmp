@@ -4,3 +4,5 @@ scratch/*
 *.nc
 *.nc4
 *.zip
+
+__pycache__

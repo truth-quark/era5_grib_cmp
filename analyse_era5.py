@@ -11,12 +11,9 @@ gdal.UseExceptions()
 GRIB_REF_TIME = "GRIB_REF_TIME"
 TZ_UTC = datetime.timezone.utc
 
-def main():
-    grib_path = "data/20230201_era5_rh_global.data.grib"
-    analyse_grib_gdal(grib_path)
 
-
-def analyse_grib_gdal(path):
+def test_read_global_grib_gdal():
+    path = "data/20230201_era5_rh_global.data.grib"
     ds = gdal.Open(path)
     assert isinstance(ds, gdal.Dataset)
 
@@ -50,7 +47,3 @@ def analyse_grib_gdal(path):
 
 def debug(actual, exp):
     assert exp == actual, f"Exp: {exp} != {actual}"
-
-
-if __name__ == "__main__":
-    main()

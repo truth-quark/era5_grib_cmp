@@ -41,4 +41,7 @@ def read_data_xarray(path, nband):
         # there are no time or pressure dimensions, ignore nband & return data
         return ds.r.data
 
+    if ds.r.dims == ('isobaricInhPa', 'latitude', 'longitude'):
+        return ds.r.data[nband]
+
     raise NotImplementedError("Handle time/pressure bands")

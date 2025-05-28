@@ -31,9 +31,8 @@ def read_data_gdal(path, nband):
 
 
 def read_data_xarray(path, nband):
-    # TODO: does xarray use GDAL???
-    # checked in virtual env, raw xarray from pip does NOT have a GDAL dependency
-
+    # HACK: this has nband as int for single timestep data & an index tuple of
+    #  (time, pressure) for data with time/isobaricInhPa/latitude/longitude dims
     ds = xr.open_dataset(path, engine="cfgrib", decode_timedelta=False)
 
     assert ds.r is not None
@@ -43,5 +42,9 @@ def read_data_xarray(path, nband):
 
     if ds.r.dims == ('isobaricInhPa', 'latitude', 'longitude'):
         return ds.r.data[nband]
+
+    if ds.r.dims == ('time', 'isobaricInhPa', 'latitude', 'longitude'):
+        time, pressure = nband  # NB: time is in increasing order
+        return ds.r.data[time,::-1][pressure]  # NB: reverse pressure data order
 
     raise NotImplementedError("Handle time/pressure bands")

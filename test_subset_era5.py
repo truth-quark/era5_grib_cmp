@@ -24,11 +24,17 @@ def test_gdal_pygrib_single_band_read_matches(aus_1_band_subset_path):
 
     gdal_data = rd.read_data_gdal(aus_1_band_subset_path, band)
     pygrib_data = rd.read_data_pygrib(aus_1_band_subset_path, band)
+    xarray_data = rd.read_data_xarray(aus_1_band_subset_path, nband=None)
 
-    matches = pygrib_data == gdal_data
+    matches = gdal_data == pygrib_data
 
     assert matches.all(), "GDAL & pygrib data reads are different"
-    assert ((0.0 <= gdal_data) <= 100.0).all(), "Invalid RH data found"
+    assert ((0.0 <= gdal_data) <= 100.0).all(), "Invalid GDAL RH data found"
+
+    # second stage match
+    matches2 = gdal_data == xarray_data
+    assert matches2.all(), "GDAL & xarray data reads are different"
+    assert ((0.0 <= xarray_data) <= 100.0).all(), "Invalid xarray RH data found"
 
 
 # nlat, nlon = gdal_data.shape

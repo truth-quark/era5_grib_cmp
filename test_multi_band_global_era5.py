@@ -22,7 +22,7 @@ def aus_1_band_subset_path():
 def test_gdal_pygrib_single_band_read_matches(aus_1_band_subset_path):
     band = 0  # using 0 for 1st band
 
-    gdal_data = rd.read_gdal_data(aus_1_band_subset_path, band)
+    gdal_data = rd.read_data_gdal(aus_1_band_subset_path, band)
     pygrib_data = rd.read_data_pygrib(aus_1_band_subset_path, band)
 
     matches = pygrib_data == gdal_data

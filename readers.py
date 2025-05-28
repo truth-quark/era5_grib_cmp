@@ -22,7 +22,7 @@ def read_data_pygrib(path, nband):
     return data
 
 
-def read_gdal_data(path, nband):
+def read_data_gdal(path, nband):
     ds = gdal.Open(path)
     band = ds.GetRasterBand(nband+1)
     data = band.ReadAsArray()  # TODO: warning performance for large arrays

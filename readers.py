@@ -5,6 +5,8 @@ TODO: readers for opening GRIB files with different libraries
 from osgeo import gdal
 import pygrib
 
+gdal.UseExceptions()
+
 
 # TODO: add xarray GRIB reader
 

@@ -1,6 +1,7 @@
 import readers as rd
 
 import pytest
+import xarray as xr
 
 
 # TODO: create unittests module
@@ -23,6 +24,11 @@ def aus_2_band_subset_path():
 @pytest.fixture
 def aus_6_band_subset_path():
     return "data/20230201_reanalysis_rh_3_pressure_levels_2_timestamps_aus_subset.grib"
+
+
+@pytest.fixture
+def aus_6_band_subset_nc_path():
+    return "data/20230201_reanalysis_rh_3_pressure_levels_2_timestamps_aus_subset.nc"
 
 
 def test_gdal_pygrib_single_band_read_matches(aus_1_band_subset_path):
@@ -103,6 +109,14 @@ def test_6_band_data_read(aus_6_band_subset_path):
         assert matches2.all(), f"GDAL & xarray data reads are different for band {band}"
         assert ((0.0 <= xarray_data) <= 100.0).all(), f"Invalid xarray RH data found for band {band}"
 
+
+def test_6band_grib_nc_match_xarray(aus_6_band_subset_path, aus_6_band_subset_nc_path):
+    ds_grib = xr.open_dataset(aus_6_band_subset_path, engine="cfgrib", decode_timedelta=False)
+    ds_nc = xr.open_dataset(aus_6_band_subset_nc_path, engine="netcdf4", decode_timedelta=False)
+
+    matches = ds_grib.r.data == ds_nc.r.data
+    assert matches.all(), "GRIB & NC reads different by xarray"
+    assert ((0.0 <= ds_nc.r.data) <= 100.0).all(), "Invalid NC RH data found"
 
 
 # nlat, nlon = gdal_data.shape

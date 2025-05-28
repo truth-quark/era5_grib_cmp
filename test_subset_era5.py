@@ -4,10 +4,7 @@ import pytest
 
 
 # TODO: create unittests module
-#       - single band file matches (subset)
-#       - three band file matches  1, 500, 1000hPa
-#       - grab larger file with bigger extents
-#       - test multiple time stamps as it affects bands/band order
+#       - grab larger file with bigger extents?
 # TODO: test unit conversions (units in meta?) (should be percent)
 
 

@@ -1,6 +1,7 @@
 *~
 scratch/*
 *.grib
+*.idx
 *.nc
 *.nc4
 *.zip

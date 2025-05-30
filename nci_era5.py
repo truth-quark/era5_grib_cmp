@@ -1,17 +1,3 @@
-# import sys
-# import xarray as xr
-#
-# nc_path = sys.argv[1]
-#
-# ds = xr.open_dataset(nc_path, decode_timedelta=False)
-#
-# for t in ds.time.data:
-#     for level in ds.level.data:
-#         data = ds.r.sel(time=t, level=level, method="nearest").data
-#         if (data < 0).any():
-#             print(f"Negative RH for {t}, {level} hPa")
-
-
 import sys
 import xarray as xr
 import numpy as np

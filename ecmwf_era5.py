@@ -14,7 +14,6 @@ USAGE:  python3 ecmwf_era5.py [GRIB_FILE]
 """
 
 import os
-import csv
 import datetime
 import sys
 import xarray as xr
@@ -30,52 +29,77 @@ assert "stats" in os.listdir(".")
 
 ds = xr.open_dataset(grib_path, engine="cfgrib", decode_timedelta=False)
 total_cells = np.multiply(*ds.r.shape[-2:])
+
+height, width = ds.r.shape[-2:]
 spacing = len(str(total_cells))
+
+# colours for viewing RH & outside 0-100 range
+RED = (200, 0, 0)
+DARK_RED = (100, 0, 0)
+BLUE = (0, 0, 200)
 
 
 for t in ds.time.data:
     dt = datetime.datetime.fromisoformat(str(t))
-    csv_path = f"stats/{dt.year}-{dt.month:02d}-{dt.day:02d}_T{dt.hour:02d}{dt.minute:02d}.csv"
+    # csv_path = f"stats/{dt.year}-{dt.month:02d}-{dt.day:02d}_T{dt.hour:02d}{dt.minute:02d}.csv"
 
-    with open(csv_path, "w") as cf:
-        writer = csv.writer(cf)
-        header = ["Pressure hPa", "Min RH", "Max RH",
-                  "Negative RH Count", "Negative RH %",
-                  "Overflow RH Count", "Overflow RH %"]
+    for level in ds.isobaricInhPa.data:
+        png_path = f"PNG/{dt.year}-{dt.month:02d}-{dt.day:02d}_T{dt.hour:02d}{dt.minute:02d}-{int(level):04d}hPa_nodata.png"
 
-        writer.writerow(header)
+        raw_data = ds.r.sel(time=t, isobaricInhPa=level, method="nearest").data
 
-        for level in ds.isobaricInhPa.data:
-            png_path = f"stats/{dt.year}-{dt.month:02d}-{dt.day:02d}_T{dt.hour:02d}{dt.minute:02d}-{int(level):04d}hPa.png"
+        assert len(raw_data.shape) == 2
 
-            data = ds.r.sel(time=t, isobaricInhPa=level, method="nearest").data
+        # roughly scale negative data away from 0 (while *increasing* RH)
+        # quick/dirty data skmi shows -10% < rh < 170%
+        image = Image.new(mode="RGB", size=(width, height))
+        idata = image.load()
 
-            # roughly scale negative data away from 0 (while *increasing* RH)
-            # quick/dirty data skmi shows -10% < rh < 170%
-            image = Image.fromarray(data.astype(np.uint8) + 20)
-            image.save(png_path)
+        r = raw_data.astype(np.uint8) + 10
 
-            # TODO: visualise negative data in the PNGs
-            negative_data = data < 0
+        underflow = False
+        overflow = False
 
-            if negative_data.any():
-                negative_count = np.count_nonzero(negative_data)
-                n_percent = (negative_count / total_cells) * 100
-            else:
-                negative_count = 0
-                n_percent = 0.0
+        for x in range(image.size[0]):
+            for y in range(image.size[1]):
+                rv = r[y, x]
+                if rv < 10:
+                    underflow = True
+                    idata[x,y] = RED
+                elif rv > 110:
+                    overflow = True
+                    idata[x, y] = BLUE
+                else:
+                    idata[x, y] = (rv, rv, rv)  # should be greyscale
 
-            overflow_data = data > 100
+        if underflow:
+            print(f"Negative RH detected: {png_path}")
+            underflow = False
+        if overflow:
+            print(f"> 100% RH detected: {png_path}")
+            overflow = False
 
-            if overflow_data.any():
-                overflow_count = np.count_nonzero(overflow_data)
-                o_percent = (overflow_count / total_cells) * 100
-            else:
-                overflow_count = 0
-                o_percent = 0.0
+        image.save(png_path)
 
-            row = [level, data.min(), data.max(),
-                   negative_count, n_percent,
-                   overflow_count, o_percent]
+        #
+        # image = Image.fromarray(combined, mode="RGB")
 
-            writer.writerow(row)
+        # if negative_data.any():
+        #     negative_count = np.count_nonzero(negative_data)
+        #     n_percent = (negative_count / total_cells) * 100
+        # else:
+        #     negative_count = 0
+        #     n_percent = 0.0
+        #
+        #
+        #
+        # if overflow_data.any():
+        #     overflow_count = np.count_nonzero(overflow_data)
+        #     o_percent = (overflow_count / total_cells) * 100
+        # else:
+        #     overflow_count = 0
+        #     o_percent = 0.0
+        #
+        # row = [level, data.min(), data.max(),
+        #        negative_count, n_percent,
+        #        overflow_count, o_percent]

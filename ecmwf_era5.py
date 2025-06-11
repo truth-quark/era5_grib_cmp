@@ -13,7 +13,6 @@ This script reads GRIB files to report high level data issues.
 USAGE:  python3 ecmwf_era5.py [GRIB_FILE]
 """
 
-import os
 import datetime
 import sys
 import xarray as xr
@@ -22,12 +21,10 @@ import numpy as np
 from PIL import Image
 
 
-grib_path = sys.argv[1]
+input_path = sys.argv[1]
+is_nc = input_path.endswith(".nc")
 
-assert "stats" in os.listdir(".")
-
-
-ds = xr.open_dataset(grib_path, engine="cfgrib", decode_timedelta=False)
+ds = xr.open_dataset(input_path, decode_timedelta=False)
 total_cells = np.multiply(*ds.r.shape[-2:])
 
 height, width = ds.r.shape[-2:]
@@ -41,12 +38,16 @@ BLUE = (0, 0, 200)
 
 for t in ds.time.data:
     dt = datetime.datetime.fromisoformat(str(t))
-    # csv_path = f"stats/{dt.year}-{dt.month:02d}-{dt.day:02d}_T{dt.hour:02d}{dt.minute:02d}.csv"
 
-    for level in ds.isobaricInhPa.data:
+    levels = ds.level.data if is_nc else ds.isobaricInhPa.data
+
+    for level in levels:
         png_path = f"PNG/{dt.year}-{dt.month:02d}-{dt.day:02d}_T{dt.hour:02d}{dt.minute:02d}-{int(level):04d}hPa_nodata.png"
 
-        raw_data = ds.r.sel(time=t, isobaricInhPa=level, method="nearest").data
+        if is_nc:
+            raw_data = ds.r.sel(time=t, level=level, method="nearest").data
+        else:
+            raw_data = ds.r.sel(time=t, isobaricInhPa=level, method="nearest").data
 
         assert len(raw_data.shape) == 2
 

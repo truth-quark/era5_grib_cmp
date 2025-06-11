@@ -10,11 +10,13 @@ is faulty, with negative `rh` and "overflow", where `rh` is above 100.
 
 This script reads GRIB files to report high level data issues.
 
-USAGE:  python3 ecmwf_era5.py [GRIB_FILE]
+USAGE:  python3 ecmwf_era5.py [GRIB_OR_NC_FILE]
 """
 
+import pathlib
 import datetime
 import sys
+
 import xarray as xr
 import numpy as np
 
@@ -42,7 +44,14 @@ for t in ds.time.data:
     levels = ds.level.data if is_nc else ds.isobaricInhPa.data
 
     for level in levels:
-        png_path = f"PNG/{dt.year}-{dt.month:02d}-{dt.day:02d}_T{dt.hour:02d}{dt.minute:02d}-{int(level):04d}hPa_nodata.png"
+        level = int(level)
+        dest_dir = pathlib.Path(f"PNG/{level:04d}hPa")
+
+        if not dest_dir.exists():
+            dest_dir.mkdir()
+
+        timestamp = f"{dt.year}-{dt.month:02d}-{dt.day:02d}_T{dt.hour:02d}{dt.minute:02d}"
+        png_path = dest_dir / f"{timestamp}-{level:04d}hPa_nodata.png"
 
         if is_nc:
             raw_data = ds.r.sel(time=t, level=level, method="nearest").data

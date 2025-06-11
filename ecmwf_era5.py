@@ -75,33 +75,14 @@ for t in ds.time.data:
                     idata[x, y] = (pixel, pixel, pixel)  # should be greyscale
 
         if underflow:
-            print(f"Negative RH detected: {png_path}")
-            underflow = False
+            negative_count = np.count_nonzero(raw_data < 0.0)
+            n_percent = round((negative_count / total_cells) * 100, 2)
+            print(f" Negative RH detected {n_percent}% of cells: {png_path}")
         if overflow:
-            print(f"> 100% RH detected: {png_path}")
-            overflow = False
+            overflow_count = np.count_nonzero(raw_data > 100.0)
+            o_percent = round((overflow_count / total_cells) * 100, 2)
+            print(f"Over 100% RH detected {o_percent}% of cells: {png_path}")
 
         image.save(png_path)
 
-        #
-        # image = Image.fromarray(combined, mode="RGB")
-
-        # if negative_data.any():
-        #     negative_count = np.count_nonzero(negative_data)
-        #     n_percent = (negative_count / total_cells) * 100
-        # else:
-        #     negative_count = 0
-        #     n_percent = 0.0
-        #
-        #
-        #
-        # if overflow_data.any():
-        #     overflow_count = np.count_nonzero(overflow_data)
-        #     o_percent = (overflow_count / total_cells) * 100
-        # else:
-        #     overflow_count = 0
-        #     o_percent = 0.0
-        #
-        # row = [level, data.min(), data.max(),
-        #        negative_count, n_percent,
-        #        overflow_count, o_percent]
+    print()  # space out levels in output

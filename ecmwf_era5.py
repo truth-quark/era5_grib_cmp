@@ -37,6 +37,8 @@ RED = (200, 0, 0)
 DARK_RED = (100, 0, 0)
 BLUE = (0, 0, 200)
 
+GREY_OFFSET = 10
+
 
 for t in ds.time.data:
     dt = datetime.datetime.fromisoformat(str(t))
@@ -79,7 +81,7 @@ for t in ds.time.data:
                     overflow = True
                     idata[x, y] = BLUE
                 else:
-                    pixel = int(rv) + 10  # offset brings RH=0 off black
+                    pixel = int(rv) + GREY_OFFSET  # offset brings RH=0 off black
                     idata[x, y] = (pixel, pixel, pixel)  # should be greyscale
 
         if underflow:

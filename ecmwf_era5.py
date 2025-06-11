@@ -65,8 +65,6 @@ for t in ds.time.data:
         image = Image.new(mode="RGB", size=(width, height))
         idata = image.load()
 
-        r = raw_data.astype(np.uint8) + 10
-
         underflow = False
         overflow = False
 

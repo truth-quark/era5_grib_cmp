@@ -60,17 +60,19 @@ for t in ds.time.data:
         underflow = False
         overflow = False
 
+        # TODO: pixel by pixel access to is slow, check API for passing arrays to PIL
         for x in range(image.size[0]):
             for y in range(image.size[1]):
-                rv = r[y, x]
-                if rv < 10:
-                    underflow = True
+                rv = raw_data[y, x]
+                if rv < 0.0:
+                    underflow = True  # negative RH
                     idata[x,y] = RED
-                elif rv > 110:
+                elif rv > 100.0:
                     overflow = True
                     idata[x, y] = BLUE
                 else:
-                    idata[x, y] = (rv, rv, rv)  # should be greyscale
+                    pixel = int(rv) + 10  # offset brings RH=0 off black
+                    idata[x, y] = (pixel, pixel, pixel)  # should be greyscale
 
         if underflow:
             print(f"Negative RH detected: {png_path}")

@@ -56,7 +56,8 @@ def check_nodata(path: pathlib.Path):
     for t in ds.time.data:
         timeslice = ds.tco3.sel(time=t)
 
-        # TODO: is this a slow operation?
+        # NB: all 3 check operations take ~1-2 seconds on NCI
+        #  The slower aspect is checking 24 timesteps pver 28+ days per month
         if not timeslice.notnull().all():
             res.append("Contains nulls")
 
@@ -82,10 +83,6 @@ def check_nodata(path: pathlib.Path):
 
 
 if __name__ == "__main__":
-    # TODO:
-    #  - get a dir, look for all NCs recursively
-    #  - for each file, open, read data, look for +ve & -ve values near NODATA & report
-
     for i in sys.argv[1:]:
         input_dir = pathlib.Path(i)
         workflow(input_dir)

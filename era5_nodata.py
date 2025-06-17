@@ -44,9 +44,9 @@ def workflow(input_dir_path):
                 print(f"{path_key} @ {time_key}: {results[path_key][time_key]}")
 
     if results:
-        print("Some NODATA, negatives or high values found")
+        print("RESULT: Some NODATA, negatives or high values found")
     else:
-        print(f"{input_dir_path} checks out free of NODATA")
+        print(f"RESULT: {input_dir_path} checks out free of NODATA")
 
 
 def check_nodata(path: pathlib.Path):

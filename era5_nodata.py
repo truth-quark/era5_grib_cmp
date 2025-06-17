@@ -14,10 +14,10 @@ import pathlib
 import xarray as xr
 
 
-def workflow():
+def workflow(input_dir_path):
     results = []
 
-    for dirpath, dirnames, filenames in os.walk(input_dir):
+    for dirpath, dirnames, filenames in os.walk(input_dir_path):
         dirpath = pathlib.Path(dirpath)
 
         for fname in filenames:
@@ -63,7 +63,7 @@ if __name__ == "__main__":
     # TODO:
     #  - get a dir, look for all NCs recursively
     #  - for each file, open, read data, look for +ve & -ve values near NODATA & report
-    input_dir = pathlib.Path(sys.argv[1])
-    assert input_dir.exists()
 
-    workflow()
+    for i in sys.argv[1:]:
+        input_dir = pathlib.Path(i)
+        workflow(input_dir)

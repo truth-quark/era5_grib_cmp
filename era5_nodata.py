@@ -54,17 +54,17 @@ def check_nodata(path: pathlib.Path):
     ds = xr.open_dataset(path, decode_timedelta=False)
 
     for t in ds.time.data:
-        timeslice = ds.tco3.sel(time=t)
+        geo_area = ds.tco3.sel(time=t)
 
         # NB: all 3 check operations take ~1-2 seconds on NCI
-        #  The slower aspect is checking 24 timesteps pver 28+ days per month
-        if not timeslice.notnull().all():
+        #  The slower aspect is checking 24 timesteps over 28+ days per month
+        if not geo_area.notnull().all():
             res.append("Contains nulls")
 
         if DEBUG:
             print(f"  Null check completed")
 
-        raw_data = timeslice.data
+        raw_data = geo_area.data
 
         if (raw_data < 0).any():
             res.append("Contains negatives (possible NCI NODATA?)")

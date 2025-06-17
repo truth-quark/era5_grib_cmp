@@ -11,6 +11,7 @@ import os
 import sys
 import pathlib
 import datetime
+import collections
 
 import xarray as xr
 
@@ -19,7 +20,7 @@ DEBUG = "DEBUG" in os.environ
 
 
 def workflow(input_dir_path):
-    results = []
+    results = collections.defaultdict(dict)
 
     for dirpath, dirnames, filenames in os.walk(input_dir_path):
         dirpath = pathlib.Path(dirpath)
@@ -33,15 +34,19 @@ def workflow(input_dir_path):
 
                 for time, res in check_nodata(file_path):
                     if res:
-                        print(fname, time)
-                        for r in res:
-                            print(f"  - {r}")
+                        # contains possible NODATA or "bad" values
+                        results[file_path][time] = res
 
-                        # roughly dump results somewhere for now
-                        results.append((fname, time, res))
+    # quick report
+    if results:
+        for path_key in sorted(results.keys()):
+            for time_key in sorted(results[path_key].keys()):
+                print(f"{path_key} @ {time_key}: {results[path_key][time_key]}")
 
     if results:
         print("Some NODATA, negatives or high values found")
+    else:
+        print(f"{input_dir_path} checks out free of NODATA")
 
 
 def check_nodata(path: pathlib.Path):

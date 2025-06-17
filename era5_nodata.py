@@ -10,8 +10,12 @@ USAGE:  python3 era5_nodata.py [NC_DIR]
 import os
 import sys
 import pathlib
+import datetime
 
 import xarray as xr
+
+
+DEBUG = "DEBUG" in os.environ
 
 
 def workflow(input_dir_path):
@@ -24,6 +28,9 @@ def workflow(input_dir_path):
             file_path = dirpath / fname
 
             if file_path.name.endswith(".nc") or file_path.name.endswith(".nc4"):
+                if DEBUG:
+                    print(f"Scanning {file_path}")
+
                 for time, res in check_nodata(file_path):
                     if res:
                         print(fname, time)
@@ -48,13 +55,23 @@ def check_nodata(path: pathlib.Path):
         if not timeslice.notnull().all():
             res.append("Contains nulls")
 
+        if DEBUG:
+            print(f"  Null check completed")
+
         raw_data = timeslice.data
 
         if (raw_data < 0).any():
             res.append("Contains negatives (possible NCI NODATA?)")
 
+        if DEBUG:
+            print(f"  -ve check completed")
+
         if (raw_data > 1e3).any():
             res.append("Contains higher positives (possible ERA5 NODATA?)")
+
+        if DEBUG:
+            print(f"  +ve overflow check completed")
+            print(f"Completed {t} at {datetime.datetime.now()}")
 
         yield t, res
 

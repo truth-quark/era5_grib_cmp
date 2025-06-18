@@ -19,6 +19,7 @@ import xarray as xr
 DEBUG = "DEBUG" in os.environ
 
 
+# NB: this could be replaced with a CSV lookup to avoid code changes
 ERA5_SINGLE_LEVEL_VARIABLES = ("2t", "z", "sp", "2d")
 ERA5_SINGLE_LEVEL_NC_VARIABLES = ("t2m", "z", "sp", "d2m")
 
@@ -63,7 +64,7 @@ def workflow(input_dir_path):
             var = get_variable_name(fname)
 
             if var is None:
-                raise NotImplementedError(f"No handler for {var}")
+                raise NotImplementedError(f"No handler for {fname}")
 
             file_path = dirpath / fname
 

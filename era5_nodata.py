@@ -19,6 +19,40 @@ import xarray as xr
 DEBUG = "DEBUG" in os.environ
 
 
+ERA5_SINGLE_LEVEL_VARIABLES = ("2t", "z", "sp", "2d")
+ERA5_SINGLE_LEVEL_NC_VARIABLES = ("t2m", "z", "sp", "d2m")
+
+MIN_VALID_TEMPERATURE_K = 179.0  # K https://en.wikipedia.org/wiki/Lowest_temperature_recorded_on_Earth
+MAX_VALID_TEMPERATURE_K = 320.0  # K https://en.wikipedia.org/wiki/Highest_temperature_recorded_on_Earth
+MIN_VALID_PRESSURE_PA = 90000.0  # https://en.wikipedia.org/wiki/List_of_atmospheric_pressure_records_in_Europe#Land-based_observations_in_Europe
+MAX_VALID_PRESSURE_PA = 107000.0
+
+
+ERA5_SINGLE_LEVEL_NC_MIN = {"t2m": MIN_VALID_TEMPERATURE_K,
+                             "z": None,
+                             "sp": MIN_VALID_PRESSURE_PA,
+                             "d2m": MIN_VALID_TEMPERATURE_K,
+                            }
+
+ERA5_SINGLE_LEVEL_NC_MAX = {"t2m": MAX_VALID_TEMPERATURE_K,
+                             "z": None,
+                             "sp": MAX_VALID_PRESSURE_PA,
+                             "d2m": MAX_VALID_TEMPERATURE_K,
+                            }
+
+ERA5_SINGLE_LEVEL_NC_NODATA = {"t2m": None,
+                               "z": None,
+                               "sp": None,
+                               "d2m": None
+                               }
+
+
+# TODO: work on an assumption this script takes ERA5 year dirs
+#  each dir of single level files contains 12 months
+#  - detect filename variable, match to NC variable
+#  - feed in NODATA, valid min/max
+
+
 def workflow(input_dir_path):
     results = collections.defaultdict(dict)
 
@@ -26,13 +60,20 @@ def workflow(input_dir_path):
         dirpath = pathlib.Path(dirpath)
 
         for fname in filenames:
+            var = get_variable_name(fname)
+
+            if var is None:
+                raise NotImplementedError(f"No handler for {var}")
+
             file_path = dirpath / fname
 
             if file_path.name.endswith(".nc") or file_path.name.endswith(".nc4"):
                 if DEBUG:
                     print(f"Scanning {file_path}")
 
-                for time, res in check_nodata(file_path):
+                for time, res in check_nodata(file_path, var,
+                                              ERA5_SINGLE_LEVEL_NC_MIN[var],
+                                              ERA5_SINGLE_LEVEL_NC_MAX[var]):
                     if res:
                         # contains possible NODATA or "bad" values
                         results[file_path][time] = res
@@ -49,12 +90,18 @@ def workflow(input_dir_path):
         print(f"RESULT: {input_dir_path} checks out free of NODATA")
 
 
-def check_nodata(path: pathlib.Path):
+def get_variable_name(file_path):
+    for v, nv in zip(ERA5_SINGLE_LEVEL_VARIABLES, ERA5_SINGLE_LEVEL_NC_VARIABLES):
+        if file_path.startswith(v):
+            return nv
+
+
+def check_nodata(path: pathlib.Path, var: str, min_valid, max_valid):
     res = []
     ds = xr.open_dataset(path, decode_timedelta=False)
 
     for t in ds.time.data:
-        geo_area = ds.tco3.sel(time=t)
+        geo_area = ds[var].sel(time=t)
 
         # NB: all 3 check operations take ~1-2 seconds on NCI
         #  The slower aspect is checking 24 timesteps over 28+ days per month
@@ -66,17 +113,17 @@ def check_nodata(path: pathlib.Path):
 
         raw_data = geo_area.data
 
-        if (raw_data < 0).any():
-            res.append("Contains negatives (possible NCI NODATA?)")
+        if (raw_data < min_valid).any():
+            res.append(f"Contains values below {min_valid} (possible NCI NODATA?)")
 
         if DEBUG:
-            print(f"  -ve check completed")
+            print(f"  Below min valid check completed")
 
-        if (raw_data > 1e3).any():
-            res.append("Contains higher positives (possible ERA5 NODATA?)")
+        if (raw_data > max_valid).any():
+            res.append(f"Contains positive values > {max_valid} (possible ERA5 NODATA?)")
 
         if DEBUG:
-            print(f"  +ve overflow check completed")
+            print(f"  Above max valid check completed")
             print(f"Completed {t} at {datetime.datetime.now()}")
 
         yield t, res

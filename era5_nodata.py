@@ -120,19 +120,26 @@ def check_nodata(path: pathlib.Path, var: str, min_valid, max_valid):
             print(f"  Null check completed")
 
         raw_data = geo_area.data
+        below_min_valid_mask = raw_data < min_valid
 
-        if (raw_data < min_valid).any():
+        if below_min_valid_mask.any():
+            below_min_values = raw_data[below_min_valid_mask]
             res.append(f"Contains values below {min_valid} (possible NCI NODATA?)")
+            res.append(f"Min values are {below_min_values}")
 
         if DEBUG:
             print(f"  Below min valid check completed")
 
-        if (raw_data > max_valid).any():
+        above_max_valid_mask = raw_data > max_valid
+
+        if above_max_valid_mask.any():
+            above_max_values = raw_data[above_max_valid_mask]
             res.append(f"Contains positive values > {max_valid} (possible ERA5 NODATA?)")
+            res.append(f"Max values are {above_max_values}")
 
         if DEBUG:
             print(f"  Above max valid check completed")
-            print(f"Completed {t} at {datetime.datetime.now()}")
+            print(f"Completed {t} check at {datetime.datetime.now()}")  # help with timing estimates
 
         yield t, res
 

@@ -13,6 +13,7 @@ import pathlib
 import datetime
 import collections
 
+import numpy as np
 import xarray as xr
 
 
@@ -89,7 +90,11 @@ def print_report(results, input_dir_path):
             print(path_key)
 
             for time_key in sorted(results[path_key].keys()):
-                print(f"{time_key}: {results[path_key][time_key]}")
+                print(f"{time_key}:")
+
+                for r in results[path_key][time_key]:
+                    print(r)
+
             print()  # split report outputs by month
 
     if results:
@@ -123,8 +128,8 @@ def check_nodata(path: pathlib.Path, var: str, min_valid, max_valid):
         below_min_valid_mask = raw_data < min_valid
 
         if below_min_valid_mask.any():
-            below_min_values = raw_data[below_min_valid_mask]
-            res.append(f"Contains values below {min_valid} (possible NCI NODATA?)")
+            below_min_values = np.unique(raw_data[below_min_valid_mask])
+            res.append(f"Contains {below_min_values.shape} unique values below {min_valid}")
             res.append(f"Min values are {below_min_values}")
 
         if DEBUG:
@@ -133,8 +138,8 @@ def check_nodata(path: pathlib.Path, var: str, min_valid, max_valid):
         above_max_valid_mask = raw_data > max_valid
 
         if above_max_valid_mask.any():
-            above_max_values = raw_data[above_max_valid_mask]
-            res.append(f"Contains positive values > {max_valid} (possible ERA5 NODATA?)")
+            above_max_values = np.unique(raw_data[above_max_valid_mask])
+            res.append(f"Contains {above_max_values.shape} unique positive values > {max_valid}")
             res.append(f"Max values are {above_max_values}")
 
         if DEBUG:

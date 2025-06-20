@@ -98,10 +98,10 @@ def get_variable_name(file_path):
 
 
 def check_nodata(path: pathlib.Path, var: str, min_valid, max_valid):
-    res = []
     ds = xr.open_dataset(path, decode_timedelta=False)
 
     for t in ds.time.data:
+        res = []
         geo_area = ds[var].sel(time=t)
 
         # NB: all 3 check operations take ~1-2 seconds on NCI

@@ -79,11 +79,18 @@ def workflow(input_dir_path):
                         # contains possible NODATA or "bad" values
                         results[file_path][time] = res
 
+    print_report(results, input_dir_path)
+
+
+def print_report(results, input_dir_path):
     # quick report
     if results:
         for path_key in sorted(results.keys()):
+            print(path_key)
+
             for time_key in sorted(results[path_key].keys()):
-                print(f"{path_key} @ {time_key}: {results[path_key][time_key]}")
+                print(f"{time_key}: {results[path_key][time_key]}")
+            print()  # split report outputs by month
 
     if results:
         print("RESULT: Some NODATA, negatives or high values found")

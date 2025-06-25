@@ -18,6 +18,7 @@ import xarray as xr
 
 
 DEBUG = "DEBUG" in os.environ
+SUBSET = "SUBSET" in os.environ  # limit calculations to Antarctic area
 
 
 # NB: this could be replaced with a CSV lookup to avoid code changes
@@ -112,12 +113,20 @@ def get_variable_name(file_path):
 def check_nodata(path: pathlib.Path, var: str, min_valid, max_valid):
     ds = xr.open_dataset(path, decode_timedelta=False)
 
-    n_timesteps, n_latitudes, n_longitudes = ds[var].shape
+    if SUBSET:
+        geo_area = ds[var].sel(time=ds.time.data[0], latitude=slice(-60, -90))
+        n_latitudes, n_longitudes = geo_area.shape
+
+        if geo_area.latitude[0] != -60.0:
+            raise RuntimeError(f"Why is 1st latitude {var.latitude[0]} not -60?")
+    else:
+        _, n_latitudes, n_longitudes = ds[var].shape
+
     total_cells = n_latitudes * n_longitudes
 
     for t in ds.time.data:
         res = []
-        geo_area = ds[var].sel(time=t)
+        geo_area = ds[var].sel(time=t, latitude=slice(-60, -90)) if SUBSET else ds[var].sel(time=t)
 
         # NB: all 3 check operations take ~1-2 seconds on NCI
         #  The slower aspect is checking 24 timesteps over 28+ days per month

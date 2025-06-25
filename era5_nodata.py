@@ -112,6 +112,9 @@ def get_variable_name(file_path):
 def check_nodata(path: pathlib.Path, var: str, min_valid, max_valid):
     ds = xr.open_dataset(path, decode_timedelta=False)
 
+    n_timesteps, n_latitudes, n_longitudes = ds[var].shape
+    total_cells = n_latitudes * n_longitudes
+
     for t in ds.time.data:
         res = []
         geo_area = ds[var].sel(time=t)
@@ -121,30 +124,36 @@ def check_nodata(path: pathlib.Path, var: str, min_valid, max_valid):
         if not geo_area.notnull().all():
             res.append("Contains nulls")
 
-        if DEBUG:
-            print(f"  Null check completed")
+        # if DEBUG:
+        #     print(f"  Null check completed")
 
         raw_data = geo_area.data
         below_min_valid_mask = raw_data < min_valid
 
         if below_min_valid_mask.any():
-            below_min_values = np.unique(raw_data[below_min_valid_mask])
-            res.append(f"Contains {below_min_values.shape} unique values below {min_valid}")
-            res.append(f"Min values are {below_min_values}")
+            n_low_values = np.count_nonzero(below_min_valid_mask)
+            low_percent = n_low_values / total_cells
 
-        if DEBUG:
-            print(f"  Below min valid check completed")
+            msgs = [f"Contains {n_low_values} values < {min_valid} ({low_percent:.2%})",
+                    f"Unique min values are {np.unique(raw_data[below_min_valid_mask])}"]
+            res.extend(msgs)
+
+        # if DEBUG:
+        #     print(f"  Below min valid check completed")
 
         above_max_valid_mask = raw_data > max_valid
 
         if above_max_valid_mask.any():
-            above_max_values = np.unique(raw_data[above_max_valid_mask])
-            res.append(f"Contains {above_max_values.shape} unique positive values > {max_valid}")
-            res.append(f"Max values are {above_max_values}")
+            n_high_values = np.count_nonzero(above_max_valid_mask)
+            high_percent = n_high_values / total_cells
 
-        if DEBUG:
-            print(f"  Above max valid check completed")
-            print(f"Completed {t} check at {datetime.datetime.now()}")  # help with timing estimates
+            msgs = [f"Contains {n_high_values} positive values > {max_valid} ({high_percent:.2%})",
+                    f"Unique max values are {np.unique(raw_data[above_max_valid_mask])}"]
+            res.extend(msgs)
+
+        # if DEBUG:
+        #     print(f"  Above max valid check completed")
+        #     print(f"Completed {t} check at {datetime.datetime.now()}")  # help with timing estimates
 
         yield t, res
 

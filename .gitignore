@@ -5,5 +5,8 @@ scratch/*
 *.nc
 *.nc4
 *.zip
+*.png
+*.PNG
 
+.idea/
 __pycache__

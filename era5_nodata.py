@@ -10,7 +10,7 @@ USAGE:  python3 era5_nodata.py [NC_DIR]
 import os
 import sys
 import pathlib
-import datetime
+# import datetime
 import collections
 import warnings
 
@@ -18,6 +18,8 @@ import numpy as np
 import xarray as xr
 
 
+TIME = "time"
+VALID_TIME = "valid_time"
 DEBUG = "DEBUG" in os.environ
 SUBSET = "SUBSET" in os.environ  # limit calculations to Antarctic area
 
@@ -50,6 +52,9 @@ ERA5_SINGLE_LEVEL_NC_NODATA = {"t2m": None,
                                "d2m": None
                                }
 
+# TODO: tmp ugly option to configure dynamic xr dataset selection ops
+_selection_args = {"latitude": slice(-60, -90)} if SUBSET else {}
+
 
 # TODO: work on an assumption this script takes ERA5 year dirs
 #  each dir of single level files contains 12 months
@@ -66,12 +71,16 @@ def workflow(input_dir_path):
 
         ds = xr.open_dataset(file_path, decode_timedelta=False)
 
-        for time, res in check_nodata(ds, var,
-                                      ERA5_SINGLE_LEVEL_NC_MIN[var],
-                                      ERA5_SINGLE_LEVEL_NC_MAX[var]):
-            if res:
-                # contains values potentially NODATA, too low or too high
-                results[file_path][time] = res
+        for time, geo_area in get_geo_area(ds, var):
+            for res in check_nodata(
+                geo_area,
+                ERA5_SINGLE_LEVEL_NC_MIN[var],
+                ERA5_SINGLE_LEVEL_NC_MAX[var]
+            ):
+                if res:
+                    # contains values potentially NODATA, too low or too high
+                    time_s = str(time.data)[:19]
+                    results[file_path][time_s] = res
 
     print_report(results, input_dir_path)
 
@@ -121,60 +130,58 @@ def get_variable_name(file_path):
             return nv
 
 
-def check_nodata(ds, var: str, min_valid, max_valid):
+def get_geo_area(ds, var: str):
+    """
+    Yields geospatial areas for each time step in the Dataset.
+    :param ds:
+    :param var:
 
-    if SUBSET:
-        geo_area = ds[var].sel(time=ds.time.data[0], latitude=slice(-60, -90))
-        n_latitudes, n_longitudes = geo_area.shape
+    Yields time, xarray.DataArray
+    """
+    # ERA5 time dimension differs between source & NCI data. Original ERA5 data
+    # uses "valid_time", NCI shortens this to "time". Dynamically handle both.
+    time_var = TIME if hasattr(ds, TIME) else VALID_TIME
 
-        if geo_area.latitude[0] != -60.0:
-            raise RuntimeError(f"Why is 1st latitude {var.latitude[0]} not -60?")
-    else:
-        _, n_latitudes, n_longitudes = ds[var].shape
+    # NB: ugly, uses module scope variable to dynamically adjust sel() query
+    # TODO: pass in kwargs?
+    for t in getattr(ds, time_var):
+        _selection_args[time_var] = t
+        geo_area = ds[var].sel(**_selection_args)
+        yield t, geo_area
 
+
+def check_nodata(geo_area: xr.DataArray, min_valid, max_valid):
+    n_latitudes, n_longitudes = geo_area.shape
     total_cells = n_latitudes * n_longitudes
+    res = []
 
-    for t in ds.time.data:
-        res = []
-        geo_area = ds[var].sel(time=t, latitude=slice(-60, -90)) if SUBSET else ds[var].sel(time=t)
+    # NB: all 3 check operations take ~1-2 seconds on NCI
+    #  Slower aspect is checking 24 time steps over 28-31 days per month
+    if not geo_area.notnull().all():
+        res.append("Contains nulls")
 
-        # NB: all 3 check operations take ~1-2 seconds on NCI
-        #  The slower aspect is checking 24 timesteps over 28+ days per month
-        if not geo_area.notnull().all():
-            res.append("Contains nulls")
+    raw_data = geo_area.data
+    below_min_valid_mask = raw_data < min_valid
 
-        # if DEBUG:
-        #     print(f"  Null check completed")
+    if below_min_valid_mask.any():
+        n_low_values = np.count_nonzero(below_min_valid_mask)
+        low_percent = n_low_values / total_cells
 
-        raw_data = geo_area.data
-        below_min_valid_mask = raw_data < min_valid
+        msgs = [f"Contains {n_low_values} values < {min_valid} ({low_percent:.2%})",
+                f"Unique min values are {np.unique(raw_data[below_min_valid_mask])}"]
+        res.extend(msgs)
 
-        if below_min_valid_mask.any():
-            n_low_values = np.count_nonzero(below_min_valid_mask)
-            low_percent = n_low_values / total_cells
+    above_max_valid_mask = raw_data > max_valid
 
-            msgs = [f"Contains {n_low_values} values < {min_valid} ({low_percent:.2%})",
-                    f"Unique min values are {np.unique(raw_data[below_min_valid_mask])}"]
-            res.extend(msgs)
+    if above_max_valid_mask.any():
+        n_high_values = np.count_nonzero(above_max_valid_mask)
+        high_percent = n_high_values / total_cells
 
-        # if DEBUG:
-        #     print(f"  Below min valid check completed")
+        msgs = [f"Contains {n_high_values} positive values > {max_valid} ({high_percent:.2%})",
+                f"Unique max values are {np.unique(raw_data[above_max_valid_mask])}"]
+        res.extend(msgs)
 
-        above_max_valid_mask = raw_data > max_valid
-
-        if above_max_valid_mask.any():
-            n_high_values = np.count_nonzero(above_max_valid_mask)
-            high_percent = n_high_values / total_cells
-
-            msgs = [f"Contains {n_high_values} positive values > {max_valid} ({high_percent:.2%})",
-                    f"Unique max values are {np.unique(raw_data[above_max_valid_mask])}"]
-            res.extend(msgs)
-
-        # if DEBUG:
-        #     print(f"  Above max valid check completed")
-        #     print(f"Completed {t} check at {datetime.datetime.now()}")  # help with timing estimates
-
-        yield t, res
+    yield res
 
 
 if __name__ == "__main__":

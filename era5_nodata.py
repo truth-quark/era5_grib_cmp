@@ -64,7 +64,9 @@ def workflow(input_dir_path):
         if DEBUG:
             print(f"Scanning {file_path}")
 
-        for time, res in check_nodata(file_path, var,
+        ds = xr.open_dataset(file_path, decode_timedelta=False)
+
+        for time, res in check_nodata(ds, var,
                                       ERA5_SINGLE_LEVEL_NC_MIN[var],
                                       ERA5_SINGLE_LEVEL_NC_MAX[var]):
             if res:
@@ -119,8 +121,7 @@ def get_variable_name(file_path):
             return nv
 
 
-def check_nodata(path: pathlib.Path, var: str, min_valid, max_valid):
-    ds = xr.open_dataset(path, decode_timedelta=False)
+def check_nodata(ds, var: str, min_valid, max_valid):
 
     if SUBSET:
         geo_area = ds[var].sel(time=ds.time.data[0], latitude=slice(-60, -90))

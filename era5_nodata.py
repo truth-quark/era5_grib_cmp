@@ -23,6 +23,9 @@ VALID_TIME = "valid_time"
 DEBUG = "DEBUG" in os.environ
 SUBSET = "SUBSET" in os.environ  # limit calculations to Antarctic area
 
+# HACK: temp implement argparse later
+STATS_PATH = os.environ.get("STATS_PATH")
+
 
 # NB: this could be replaced with a CSV lookup to avoid code changes
 ERA5_SINGLE_LEVEL_VARIABLES = ("2t", "z", "sp", "2d")
@@ -64,6 +67,7 @@ _selection_args = {"latitude": slice(-60, -90)} if SUBSET else {}
 
 def workflow(input_dir_path):
     results = collections.defaultdict(dict)
+    stats = collections.defaultdict(dict)
 
     for file_path, var in netcdf_search(input_dir_path):
         if DEBUG:
@@ -82,7 +86,14 @@ def workflow(input_dir_path):
                     time_s = str(time.data)[:19]
                     results[file_path][time_s] = res
 
+            stats[file_path][time_s] = get_summary_stats(geo_area)
+
     print_report(results, input_dir_path)
+
+    if stats and STATS_PATH:
+        with open(STATS_PATH, "w") as sf:
+            # NB: var shouldn't change unless search is too high in dir tree
+            dump_stats(sf, stats, var)
 
 
 def netcdf_search(input_dir_path):
@@ -122,6 +133,15 @@ def print_report(results, input_dir_path):
         print("RESULT: Some NODATA, negatives or high values found")
     else:
         print(f"RESULT: {input_dir_path} checks out free of NODATA")
+
+
+def dump_stats(file_like, stats, var: str):
+    file_like.write(f"TIMESTEP ({var}),MIN,MEAN,MAX\n")
+
+    for path_key in sorted(stats.keys()):
+        for time_key in sorted(stats[path_key].keys()):
+            mmm = ",".join(str(v) for v in stats[path_key][time_key])
+            file_like.write(f"{time_key},{mmm}\n")
 
 
 def get_variable_name(file_path):
@@ -182,6 +202,10 @@ def check_nodata(geo_area: xr.DataArray, min_valid, max_valid):
         res.extend(msgs)
 
     yield res
+
+
+def get_summary_stats(geo_area: xr.DataArray):
+    return float(geo_area.min()), float(geo_area.mean()), float(geo_area.max())
 
 
 if __name__ == "__main__":

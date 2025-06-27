@@ -12,6 +12,7 @@ import sys
 import pathlib
 import datetime
 import collections
+import warnings
 
 import numpy as np
 import xarray as xr
@@ -59,6 +60,22 @@ ERA5_SINGLE_LEVEL_NC_NODATA = {"t2m": None,
 def workflow(input_dir_path):
     results = collections.defaultdict(dict)
 
+    for file_path, var in netcdf_search(input_dir_path):
+        if DEBUG:
+            print(f"Scanning {file_path}")
+
+        for time, res in check_nodata(file_path, var,
+                                      ERA5_SINGLE_LEVEL_NC_MIN[var],
+                                      ERA5_SINGLE_LEVEL_NC_MAX[var]):
+            if res:
+                # contains values potentially NODATA, too low or too high
+                results[file_path][time] = res
+
+    print_report(results, input_dir_path)
+
+
+def netcdf_search(input_dir_path):
+    # Can't use simpler pathlib.walk() until Python 3.12
     for dirpath, dirnames, filenames in os.walk(input_dir_path):
         dirpath = pathlib.Path(dirpath)
 
@@ -71,17 +88,9 @@ def workflow(input_dir_path):
             file_path = dirpath / fname
 
             if file_path.name.endswith(".nc") or file_path.name.endswith(".nc4"):
-                if DEBUG:
-                    print(f"Scanning {file_path}")
-
-                for time, res in check_nodata(file_path, var,
-                                              ERA5_SINGLE_LEVEL_NC_MIN[var],
-                                              ERA5_SINGLE_LEVEL_NC_MAX[var]):
-                    if res:
-                        # contains possible NODATA or "bad" values
-                        results[file_path][time] = res
-
-    print_report(results, input_dir_path)
+                yield file_path, var
+            else:
+                warnings.warn(f"Skipping unrecognised {file_path}")
 
 
 def print_report(results, input_dir_path):

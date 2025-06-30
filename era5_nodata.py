@@ -76,6 +76,8 @@ def workflow(input_dir_path):
         ds = xr.open_dataset(file_path, decode_timedelta=False)
 
         for time, geo_area in get_geo_area(ds, var):
+            time_s = str(time.data)[:19]
+
             for res in check_nodata(
                 geo_area,
                 ERA5_SINGLE_LEVEL_NC_MIN[var],
@@ -83,10 +85,10 @@ def workflow(input_dir_path):
             ):
                 if res:
                     # contains values potentially NODATA, too low or too high
-                    time_s = str(time.data)[:19]
                     results[file_path][time_s] = res
 
-            stats[file_path][time_s] = get_summary_stats(geo_area)
+            summary_stats = get_summary_stats(geo_area)
+            stats[file_path][time_s] = summary_stats
 
     print_report(results, input_dir_path)
 

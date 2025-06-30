@@ -121,20 +121,15 @@ def print_report(results):
     # quick report
     if results:
         for path_key in sorted(results.keys()):
-            print(path_key)
+            print(f"File: {path_key}")
 
             for time_key in sorted(results[path_key].keys()):
-                print(f"{time_key}:")
+                print(f"\n{time_key}:")
 
                 for r in results[path_key][time_key]:
                     print(r)
 
             print()  # split report outputs by month
-
-    if results:
-        print("RESULT: Some NODATA, negatives or high values found")
-    else:
-        print(f"RESULT: {input_dir_path} checks out free of NODATA")
 
 
 def dump_stats(file_like, stats, var: str):

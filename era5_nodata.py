@@ -65,32 +65,32 @@ _selection_args = {"latitude": slice(-60, -90)} if SUBSET else {}
 #  - feed in NODATA, valid min/max
 
 
-def workflow(input_dir_path):
+def workflow(input_dir_paths):
     results = collections.defaultdict(dict)
     stats = collections.defaultdict(dict)
 
-    for file_path, var in netcdf_search(input_dir_path):
-        if DEBUG:
-            print(f"Scanning {file_path}")
+    for input_dir_path in input_dir_paths:
+        # TODO: potentially convert to funcs & return data?
+        for file_path, var in netcdf_search(input_dir_path):
+            ds = xr.open_dataset(file_path, decode_timedelta=False)
 
-        ds = xr.open_dataset(file_path, decode_timedelta=False)
+            for time, geo_area in get_geo_area(ds, var):
+                time_s = str(time.data)[:19]
 
-        for time, geo_area in get_geo_area(ds, var):
-            time_s = str(time.data)[:19]
+                for res in check_nodata(
+                    geo_area,
+                    ERA5_SINGLE_LEVEL_NC_MIN[var],
+                    ERA5_SINGLE_LEVEL_NC_MAX[var]
+                ):
+                    if res:
+                        # contains values potentially NODATA, too low or too high
+                        results[file_path][time_s] = res
 
-            for res in check_nodata(
-                geo_area,
-                ERA5_SINGLE_LEVEL_NC_MIN[var],
-                ERA5_SINGLE_LEVEL_NC_MAX[var]
-            ):
-                if res:
-                    # contains values potentially NODATA, too low or too high
-                    results[file_path][time_s] = res
+                summary_stats = get_summary_stats(geo_area)
+                stats[file_path][time_s] = summary_stats
 
-            summary_stats = get_summary_stats(geo_area)
-            stats[file_path][time_s] = summary_stats
-
-    print_report(results, input_dir_path)
+    # FIXME: expand to work with pressure-levels? CSV by equivalent level?
+    print_report(results)
 
     if stats and STATS_PATH:
         with open(STATS_PATH, "w") as sf:
@@ -117,7 +117,7 @@ def netcdf_search(input_dir_path):
                 warnings.warn(f"Skipping unrecognised {file_path}")
 
 
-def print_report(results, input_dir_path):
+def print_report(results):
     # quick report
     if results:
         for path_key in sorted(results.keys()):
@@ -211,6 +211,4 @@ def get_summary_stats(geo_area: xr.DataArray):
 
 
 if __name__ == "__main__":
-    for i in sys.argv[1:]:
-        input_dir = pathlib.Path(i)
-        workflow(input_dir)
+    workflow([pathlib.Path(i) for i in sys.argv[1:]])

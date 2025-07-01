@@ -28,31 +28,36 @@ STATS_PATH = os.environ.get("STATS_PATH")
 
 
 # NB: this could be replaced with a CSV lookup to avoid code changes
-ERA5_SINGLE_LEVEL_VARIABLES = ("2t", "z", "sp", "2d")
-ERA5_SINGLE_LEVEL_NC_VARIABLES = ("t2m", "z", "sp", "d2m")
+ERA5_SINGLE_LEVEL_VARIABLES = ("2t", "z", "sp", "2d", "tco3")
+ERA5_SINGLE_LEVEL_NC_VARIABLES = ("t2m", "z", "sp", "d2m", "tco3")
 
 MIN_VALID_TEMPERATURE_K = 179.0  # K https://en.wikipedia.org/wiki/Lowest_temperature_recorded_on_Earth
 MAX_VALID_TEMPERATURE_K = 320.0  # K https://en.wikipedia.org/wiki/Highest_temperature_recorded_on_Earth
 MIN_VALID_PRESSURE_PA = 60000.0  # https://en.wikipedia.org/wiki/List_of_atmospheric_pressure_records_in_Europe#Land-based_observations_in_Europe
 MAX_VALID_PRESSURE_PA = 107000.0
+MIN_VALID_TOTAL_COLUMN_OZONE_KGM2 = 0.0021  # ~98 Dobson units
+MAX_VALID_TOTAL_COLUMN_OZONE_KGM2 = 0.015  # ~700 Dobson units
 
 
 ERA5_SINGLE_LEVEL_NC_MIN = {"t2m": MIN_VALID_TEMPERATURE_K,
                              "z": None,
                              "sp": MIN_VALID_PRESSURE_PA,
                              "d2m": MIN_VALID_TEMPERATURE_K,
+                             "tco3": MIN_VALID_TOTAL_COLUMN_OZONE_KGM2,
                             }
 
 ERA5_SINGLE_LEVEL_NC_MAX = {"t2m": MAX_VALID_TEMPERATURE_K,
                              "z": None,
                              "sp": MAX_VALID_PRESSURE_PA,
                              "d2m": MAX_VALID_TEMPERATURE_K,
+                             "tco3": MAX_VALID_TOTAL_COLUMN_OZONE_KGM2
                             }
 
 ERA5_SINGLE_LEVEL_NC_NODATA = {"t2m": None,
                                "z": None,
                                "sp": None,
-                               "d2m": None
+                               "d2m": None,
+                               "tco3": None
                                }
 
 # TODO: tmp ugly option to configure dynamic xr dataset selection ops

@@ -185,7 +185,7 @@ def check_nodata(geo_area: xr.DataArray, min_valid, max_valid):
         low_percent = n_low_values / total_cells
 
         msgs = [f"Contains {n_low_values} values < {min_valid} ({low_percent:.2%})",
-                f"Unique min values are {np.unique(raw_data[below_min_valid_mask])}"]
+                f"Unique low/min values are {np.unique(raw_data[below_min_valid_mask])}"]
         res.extend(msgs)
 
     above_max_valid_mask = raw_data > max_valid
@@ -194,8 +194,8 @@ def check_nodata(geo_area: xr.DataArray, min_valid, max_valid):
         n_high_values = np.count_nonzero(above_max_valid_mask)
         high_percent = n_high_values / total_cells
 
-        msgs = [f"Contains {n_high_values} positive values > {max_valid} ({high_percent:.2%})",
-                f"Unique max values are {np.unique(raw_data[above_max_valid_mask])}"]
+        msgs = [f"Contains {n_high_values} values > {max_valid} ({high_percent:.2%})",
+                f"Unique high/max values are {np.unique(raw_data[above_max_valid_mask])}"]
         res.extend(msgs)
 
     yield res

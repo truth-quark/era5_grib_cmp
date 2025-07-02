@@ -245,7 +245,7 @@ def dump_stats_level(file_like, stats, var: str, level_key):
     for path_key in sorted(stats.keys()):
         for time_key in sorted(stats[path_key][level_key].keys()):
             mmm = ",".join(str(v) for v in stats[path_key][level_key][time_key])
-            file_like.write(f"{time_key},{mmm}")
+            file_like.write(f"{time_key},{mmm}\n")
 
 
 def get_variable_name(file_path):

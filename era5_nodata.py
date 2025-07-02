@@ -34,8 +34,8 @@ STATS_PATH = os.environ.get("STATS_PATH")
 
 
 # NB: this could be replaced with a CSV lookup to avoid code changes
-ERA5_VARIABLES = ("2t", "z", "sp", "2d", "tco3", "r")  # file path variable name
-ERA5_NC_VARIABLES = ("t2m", "z", "sp", "d2m", "tco3", "r")  # NetCDF data variable name
+ERA5_VARIABLES = ("2t", "z", "sp", "2d", "tco3", "r", "t")  # file path variable name
+ERA5_NC_VARIABLES = ("t2m", "z", "sp", "d2m", "tco3", "r", "t")  # NetCDF data variable name
 
 MIN_VALID_TEMPERATURE_K = 179.0  # K https://en.wikipedia.org/wiki/Lowest_temperature_recorded_on_Earth
 MAX_VALID_TEMPERATURE_K = 320.0  # K https://en.wikipedia.org/wiki/Highest_temperature_recorded_on_Earth

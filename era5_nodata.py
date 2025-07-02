@@ -120,7 +120,7 @@ def workflow(input_dir_paths):
         # NB: var shouldn't change unless search is too high in rt52 dir tree
         if has_levels:
             for level in PRESSURE_LEVELS_SUBSET:
-                path = f"{var}_{level}_hPa_{STATS_PATH}"  # NB: breaks if STATS_PATH isn't a basename
+                path = f"{var}_{level:04d}_hPa_{STATS_PATH}"  # NB: breaks if STATS_PATH isn't a basename
 
                 with open(path, "w") as mf:
                     dump_stats_level(mf, stats, var, level)

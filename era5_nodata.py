@@ -23,13 +23,19 @@ VALID_TIME = "valid_time"
 DEBUG = "DEBUG" in os.environ
 SUBSET = "SUBSET" in os.environ  # limit calculations to Antarctic area
 
+# Pressure level variable names for NCI & raw ERA5 data
+NCI_LEVEL = "level"
+ERA5_LEVEL = "isobaricInhPa"
+
+PRESSURE_LEVELS_SUBSET = [1000, 825, 550, 225, 50, 1]
+
 # HACK: temp implement argparse later
 STATS_PATH = os.environ.get("STATS_PATH")
 
 
 # NB: this could be replaced with a CSV lookup to avoid code changes
-ERA5_SINGLE_LEVEL_VARIABLES = ("2t", "z", "sp", "2d", "tco3")
-ERA5_SINGLE_LEVEL_NC_VARIABLES = ("t2m", "z", "sp", "d2m", "tco3")
+ERA5_VARIABLES = ("2t", "z", "sp", "2d", "tco3", "r")  # file path variable name
+ERA5_NC_VARIABLES = ("t2m", "z", "sp", "d2m", "tco3", "r")  # NetCDF data variable name
 
 MIN_VALID_TEMPERATURE_K = 179.0  # K https://en.wikipedia.org/wiki/Lowest_temperature_recorded_on_Earth
 MAX_VALID_TEMPERATURE_K = 320.0  # K https://en.wikipedia.org/wiki/Highest_temperature_recorded_on_Earth
@@ -37,6 +43,9 @@ MIN_VALID_PRESSURE_PA = 60000.0  # https://en.wikipedia.org/wiki/List_of_atmosph
 MAX_VALID_PRESSURE_PA = 107000.0
 MIN_VALID_TOTAL_COLUMN_OZONE_KGM2 = 0.0021  # ~98 Dobson units
 MAX_VALID_TOTAL_COLUMN_OZONE_KGM2 = 0.015  # ~700 Dobson units
+
+MIN_RELATIVE_HUMIDITY = 0.0  # use MODTRAN min
+MAX_RELATIVE_HUMIDITY = 100.0  # MODTRAN max
 
 
 ERA5_SINGLE_LEVEL_NC_MIN = {"t2m": MIN_VALID_TEMPERATURE_K,
@@ -60,6 +69,18 @@ ERA5_SINGLE_LEVEL_NC_NODATA = {"t2m": None,
                                "tco3": None
                                }
 
+# NB: Only r & t needed, can skip z/geopotential as it's a constant
+ERA5_MULTI_LEVEL_NC_MIN = {
+    "t": MIN_VALID_TEMPERATURE_K,
+    "r": MIN_RELATIVE_HUMIDITY,
+}
+
+ERA5_MULTI_LEVEL_NC_MAX = {
+    "t": MAX_VALID_TEMPERATURE_K,
+    "r": MAX_RELATIVE_HUMIDITY,
+}
+
+
 # TODO: tmp ugly option to configure dynamic xr dataset selection ops
 _selection_args = {"latitude": slice(-60, -90)} if SUBSET else {}
 
@@ -73,34 +94,80 @@ _selection_args = {"latitude": slice(-60, -90)} if SUBSET else {}
 def workflow(input_dir_paths):
     results = collections.defaultdict(dict)
     stats = collections.defaultdict(dict)
+    has_levels = False
 
     for input_dir_path in input_dir_paths:
-        # TODO: potentially convert to funcs & return data?
         for file_path, var in netcdf_search(input_dir_path):
             ds = xr.open_dataset(file_path, decode_timedelta=False)
 
-            for time, geo_area in get_geo_area(ds, var):
-                time_s = str(time.data)[:19]
+            if hasattr(ds, NCI_LEVEL) or hasattr(ds, ERA5_LEVEL):
+                has_levels = True
+                analyse_multi_level(ds, var, results, stats, file_path)
+            else:
+                analyse_single_level(ds, var, results, stats, file_path)
 
-                for res in check_nodata(
-                    geo_area,
-                    ERA5_SINGLE_LEVEL_NC_MIN[var],
-                    ERA5_SINGLE_LEVEL_NC_MAX[var]
-                ):
-                    if res:
-                        # contains values potentially NODATA, too low or too high
-                        results[file_path][time_s] = res
+                if has_levels:
+                    raise RuntimeError("Analysis mixes single & pressure level data")
 
-                summary_stats = get_summary_stats(geo_area)
-                stats[file_path][time_s] = summary_stats
-
-    # FIXME: expand to work with pressure-levels? CSV by equivalent level?
-    print_report(results)
+    # reporting & statistics
+    # structure of reports & stats changes with single/multi level
+    if has_levels:
+        print_report_levels(results)
+    else:
+        print_report(results)
 
     if stats and STATS_PATH:
-        with open(STATS_PATH, "w") as sf:
-            # NB: var shouldn't change unless search is too high in dir tree
-            dump_stats(sf, stats, var)
+        # NB: var shouldn't change unless search is too high in rt52 dir tree
+        if has_levels:
+            for level in PRESSURE_LEVELS_SUBSET:
+                path = f"{var}_{level}_hPa_{STATS_PATH}"  # NB: breaks if STATS_PATH isn't a basename
+
+                with open(path, "w") as mf:
+                    dump_stats_level(mf, stats, var, level)
+        else:
+            with open(STATS_PATH, "w") as sf:
+                dump_stats(sf, stats, var)
+
+
+def analyse_single_level(ds, var, results, stats, file_path):
+    for time, geo_area in get_geo_area(ds, var):
+        time_s = str(time.data)[:19]
+
+        for res in check_nodata(
+            geo_area,
+            ERA5_SINGLE_LEVEL_NC_MIN[var],
+            ERA5_SINGLE_LEVEL_NC_MAX[var]
+        ):
+            if res:
+                # contains values potentially NODATA, too low or too high
+                results[file_path][time_s] = res
+
+        summary_stats = get_summary_stats(geo_area)
+        stats[file_path][time_s] = summary_stats
+
+
+def analyse_multi_level(ds, var, results, stats, file_path):
+    for time, level, geo_area in get_geo_area_levels(ds, var, PRESSURE_LEVELS_SUBSET):
+        time_s = str(time.data)[:19]
+
+        for res in check_nodata(
+            geo_area,
+            ERA5_MULTI_LEVEL_NC_MIN[var],
+            ERA5_MULTI_LEVEL_NC_MAX[var]
+        ):
+            if res:
+                # contains values potentially NODATA, too low or too high
+                if level not in results[file_path]:
+                    results[file_path][level] = {}
+
+                results[file_path][level][time_s] = res
+
+        summary_stats = get_summary_stats(geo_area)
+
+        if not level in stats[file_path]:
+            stats[file_path][level] = {}
+
+        stats[file_path][level][time_s] = summary_stats
 
 
 def netcdf_search(input_dir_path):
@@ -126,7 +193,7 @@ def print_report(results):
     # quick report
     if results:
         for path_key in sorted(results.keys()):
-            print(f"File: {path_key}")
+            print(f"File: {path_key}")  # NB: can display file paths with no warnings
 
             for time_key in sorted(results[path_key].keys()):
                 print(f"\n{time_key}:")
@@ -135,6 +202,24 @@ def print_report(results):
                     print(r)
 
             print()  # split report outputs by month
+
+
+def print_report_levels(results):
+    if not results:
+        return
+
+    for level_key in PRESSURE_LEVELS_SUBSET:
+        for path_key in sorted(results.keys()):
+            print(f"File: {path_key}")
+
+            if level_key in results[path_key]:  # not all levels will flag warnings
+                for time_key in sorted(results[path_key][level_key].keys()):
+                    print(f"\n{time_key} at {level_key} hPa:")
+
+                    for r in results[path_key][level_key][time_key]:
+                        print(r)
+
+                print()  # split report outputs by month
 
 
 def dump_stats(file_like, stats, var: str):
@@ -146,8 +231,25 @@ def dump_stats(file_like, stats, var: str):
             file_like.write(f"{time_key},{mmm}\n")
 
 
+def dump_stats_level(file_like, stats, var: str, level_key):
+    """
+    Write a CSV statistics file for a single level.
+
+    :param file_like:
+    :param stats:
+    :param var:
+    :param level_key:
+    """
+    file_like.write(f"TIMESTEP ({var}_{level_key}_hPa),MIN,MEAN,MAX\n")
+
+    for path_key in sorted(stats.keys()):
+        for time_key in sorted(stats[path_key][level_key].keys()):
+            mmm = ",".join(str(v) for v in stats[path_key][level_key][time_key])
+            file_like.write(f"{time_key},{mmm}")
+
+
 def get_variable_name(file_path):
-    for v, nv in zip(ERA5_SINGLE_LEVEL_VARIABLES, ERA5_SINGLE_LEVEL_NC_VARIABLES):
+    for v, nv in zip(ERA5_VARIABLES, ERA5_NC_VARIABLES):
         if file_path.startswith(v):
             return nv
 
@@ -170,6 +272,30 @@ def get_geo_area(ds, var: str):
         _selection_args[time_var] = t
         geo_area = ds[var].sel(**_selection_args)
         yield t, geo_area
+
+
+def get_geo_area_levels(ds, var: str, pressure_levels):
+    """
+    Yields geospatial areas for each time step in the Dataset.
+    :param ds:
+    :param var:
+    :param pressure_levels:
+
+    Yields time, pressure level, xarray.DataArray
+    """
+    # ERA5 time dimension differs between source & NCI data. Original ERA5 data
+    # uses "valid_time", NCI shortens this to "time". Dynamically handle both.
+    time_var = TIME if hasattr(ds, TIME) else VALID_TIME
+    level_var = NCI_LEVEL if hasattr(ds, NCI_LEVEL) else ERA5_LEVEL
+
+    # NB: ugly, uses module scope variable to dynamically adjust sel() query
+    # TODO: pass in kwargs?
+    for t in getattr(ds, time_var):
+        for level in pressure_levels:
+            _selection_args[time_var] = t
+            _selection_args[level_var] = level
+            geo_area = ds[var].sel(**_selection_args)
+            yield t, level, geo_area
 
 
 def check_nodata(geo_area: xr.DataArray, min_valid, max_valid):

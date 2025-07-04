@@ -34,8 +34,8 @@ STATS_PATH = os.environ.get("STATS_PATH")
 
 
 # NB: this could be replaced with a CSV lookup to avoid code changes
-ERA5_VARIABLES = ("2t", "z", "sp", "2d", "tco3", "r", "t")  # file path variable name
-ERA5_NC_VARIABLES = ("t2m", "z", "sp", "d2m", "tco3", "r", "t")  # NetCDF data variable name
+ERA5_VARIABLES = ("2t", "z", "sp", "2d", "tco3", "r", "t", "z")  # file path variable name
+ERA5_NC_VARIABLES = ("t2m", "z", "sp", "d2m", "tco3", "r", "t", "z")  # NetCDF data variable name
 
 MIN_VALID_TEMPERATURE_K = 179.0  # K https://en.wikipedia.org/wiki/Lowest_temperature_recorded_on_Earth
 MAX_VALID_TEMPERATURE_K = 320.0  # K https://en.wikipedia.org/wiki/Highest_temperature_recorded_on_Earth
@@ -47,6 +47,8 @@ MAX_VALID_TOTAL_COLUMN_OZONE_KGM2 = 0.015  # ~700 Dobson units
 MIN_RELATIVE_HUMIDITY = 0.0  # use MODTRAN min
 MAX_RELATIVE_HUMIDITY = 100.0  # MODTRAN max
 
+MIN_VALID_GEOPOTENTIAL = -100.0
+MAX_VALID_GEOPOTENTIAL = 60000.0
 
 ERA5_SINGLE_LEVEL_NC_MIN = {"t2m": MIN_VALID_TEMPERATURE_K,
                              "z": None,
@@ -69,15 +71,17 @@ ERA5_SINGLE_LEVEL_NC_NODATA = {"t2m": None,
                                "tco3": None
                                }
 
-# NB: Only r & t needed, can skip z/geopotential as it's a constant
+# NB: Only r, t & z needed
 ERA5_MULTI_LEVEL_NC_MIN = {
     "t": MIN_VALID_TEMPERATURE_K,
     "r": MIN_RELATIVE_HUMIDITY,
+    "z": MIN_VALID_GEOPOTENTIAL,
 }
 
 ERA5_MULTI_LEVEL_NC_MAX = {
     "t": MAX_VALID_TEMPERATURE_K,
     "r": MAX_RELATIVE_HUMIDITY,
+    "z": MAX_VALID_GEOPOTENTIAL,
 }
 
 

@@ -63,7 +63,7 @@ for t in ds.time.data:
         assert len(raw_data.shape) == 2
 
         # roughly scale negative data away from 0 (while *increasing* RH)
-        # quick/dirty data skmi shows -10% < rh < 170%
+        # quick/dirty data skim shows -10% < rh < 170%
         image = Image.new(mode="RGB", size=(width, height))
         idata = image.load()
 
